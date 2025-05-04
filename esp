@@ -1,0 +1,137 @@
+-- Verifica se o exploit suporta Drawing API
+if not Drawing then
+    game:GetService("StarterGui"):SetCore("SendNotification",{
+        Title = "ESP Indisponível";
+        Text = "Seu exploit não suporta a Drawing API.";
+        Duration = 8
+    })
+    return
+end
+
+-- Serviços
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+-- Configurações
+_G.ESPEnabled = true
+_G.TeamCheck = false
+_G.TextColor = Color3.fromRGB(255, 100, 10)
+_G.TextSize = 14
+_G.BoxColor = Color3.fromRGB(255, 255, 0)
+_G.Outline = true
+_G.TextTransparency = 0.8
+_G.TextFont = Drawing.Fonts.UI
+_G.DisableKey = Enum.KeyCode.Q
+
+local Typing = false
+
+-- Controle de digitação
+UserInputService.TextBoxFocused:Connect(function() Typing = true end)
+UserInputService.TextBoxFocusReleased:Connect(function() Typing = false end)
+
+-- Toggle por tecla
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == _G.DisableKey and not Typing then
+        _G.ESPEnabled = not _G.ESPEnabled
+        game:GetService("StarterGui"):SetCore("SendNotification",{
+            Title = "ESP (Cafézinho Dev)";
+            Text = "ESP " .. (_G.ESPEnabled and "ativado" or "desativado");
+            Duration = 4
+        })
+    end
+end)
+
+-- Armazena ESPs ativos
+local ESPObjects = {}
+
+-- Remove ESPs de players que saíram
+Players.PlayerRemoving:Connect(function(player)
+    if ESPObjects[player] then
+        for _, obj in pairs(ESPObjects[player]) do
+            if obj then obj:Remove() end
+        end
+        ESPObjects[player] = nil
+    end
+end)
+
+-- Atualização em tempo real
+RunService.RenderStepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") then
+
+            if _G.TeamCheck and player.Team == LocalPlayer.Team then
+                if ESPObjects[player] then
+                    for _, obj in pairs(ESPObjects[player]) do obj.Visible = false end
+                end
+                continue
+            end
+
+            if not ESPObjects[player] then
+                ESPObjects[player] = {
+                    Name = Drawing.new("Text"),
+                    Box = Drawing.new("Square")
+                }
+
+                local Name = ESPObjects[player].Name
+                Name.Size = _G.TextSize
+                Name.Color = _G.TextColor
+                Name.Center = true
+                Name.Outline = _G.Outline
+                Name.Font = _G.TextFont
+                Name.Transparency = _G.TextTransparency
+
+                local Box = ESPObjects[player].Box
+                Box.Color = _G.BoxColor
+                Box.Thickness = 1
+                Box.Transparency = 1
+                Box.Filled = false
+            end
+
+            local HRP = player.Character.HumanoidRootPart
+            local Head = player.Character.Head
+            local Humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+
+            local pos, onScreen = Camera:WorldToViewportPoint(HRP.Position)
+            local headPos = Camera:WorldToViewportPoint(Head.Position + Vector3.new(0, 0.5, 0))
+            local legPos = Camera:WorldToViewportPoint(HRP.Position - Vector3.new(0, 3, 0))
+
+            local boxHeight = (headPos.Y - legPos.Y)
+            local boxWidth = boxHeight / 2
+
+            local Name = ESPObjects[player].Name
+            local Box = ESPObjects[player].Box
+
+            if onScreen and _G.ESPEnabled then
+                local distance = math.floor((HRP.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                local health = math.floor(Humanoid.Health)
+
+                Name.Position = Vector2.new(pos.X, headPos.Y - 16)
+                Name.Text = "("..distance.."m) "..player.Name.." ["..health.."]"
+                Name.Visible = true
+
+                Box.Size = Vector2.new(boxWidth, boxHeight)
+                Box.Position = Vector2.new(pos.X - boxWidth / 2, headPos.Y)
+                Box.Visible = true
+            else
+                Name.Visible = false
+                Box.Visible = false
+            end
+        elseif ESPObjects[player] then
+            for _, obj in pairs(ESPObjects[player]) do
+                if obj then obj.Visible = false end
+            end
+        end
+    end
+end)
+
+-- Mensagem de carregamento
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification",{
+        Title = "ESP Cafézinho Dev";
+        Text = "ESP ativo com Nome, Distância, Vida e Caixa 2D infinita.";
+        Duration = 6;
+    })
+end)
