@@ -131,7 +131,7 @@ end)
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification",{
         Title = "ESP Cafézinho Dev";
-        Text = "ESP ativado com Nome, Distância, Vida e Chams 3D branco.";
+        Text = "ESP ativado";
         Duration = 6;
     })
 end)
