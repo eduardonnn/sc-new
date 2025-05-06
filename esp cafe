@@ -19,9 +19,9 @@ local UserInputService = game:GetService("UserInputService")
 _G.ESPEnabled = true
 _G.TeamCheck = false
 _G.TextColor = Color3.fromRGB(255, 255, 255)
-_G.TextSize = 14
+_G.TextSize = 8
 _G.Outline = true
-_G.TextTransparency = 0.8
+_G.TextTransparency = 1
 _G.TextFont = Drawing.Fonts.UI
 _G.DisableKey = Enum.KeyCode.Y
 
@@ -36,7 +36,7 @@ UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == _G.DisableKey and not Typing then
         _G.ESPEnabled = not _G.ESPEnabled
         game:GetService("StarterGui"):SetCore("SendNotification",{
-            Title = "ESP (Cafézinho Dev)";
+            Title = "ESP (Cafézinho)";
             Text = "ESP " .. (_G.ESPEnabled and "ativado" or "desativado");
             Duration = 4
         })
@@ -130,8 +130,8 @@ end)
 -- Mensagem de carregamento
 pcall(function()
     game:GetService("StarterGui"):SetCore("SendNotification",{
-        Title = "ESP Cafézinho Dev";
+        Title = "ESP Café";
         Text = "ESP ativado";
-        Duration = 6;
+        Duration = 15;
     })
 end)
