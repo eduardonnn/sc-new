@@ -18,8 +18,10 @@ local UserInputService = game:GetService("UserInputService")
 -- Configurações
 _G.ESPEnabled = true
 _G.TeamCheck = false
+_G.BaseTextSize = 16
+_G.MinTextSize = 10
+_G.MaxDistance = 300
 _G.TextColor = Color3.fromRGB(255, 255, 255)
-_G.TextSize = 8
 _G.Outline = true
 _G.TextTransparency = 1
 _G.TextFont = Drawing.Fonts.UI
@@ -46,80 +48,66 @@ end)
 -- Armazena ESPs ativos
 local ESPObjects = {}
 
--- Remove ESPs de players que saíram ou morreram
+-- Remove ESPs de players que saíram
 Players.PlayerRemoving:Connect(function(player)
     if ESPObjects[player] then
-        for _, obj in pairs(ESPObjects[player]) do pcall(function() obj:Destroy() end) end
+        ESPObjects[player]:Remove()
         ESPObjects[player] = nil
     end
 end)
 
--- Atualização em tempo real
+-- Função para criar texto
+local function CreateESPText()
+    local text = Drawing.new("Text")
+    text.Size = _G.BaseTextSize
+    text.Color = _G.TextColor
+    text.Center = true
+    text.Outline = _G.Outline
+    text.Font = _G.TextFont
+    text.Transparency = _G.TextTransparency
+    text.Visible = false
+    return text
+end
+
+-- Atualização
 RunService.RenderStepped:Connect(function()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head") and player.Character:FindFirstChildOfClass("Humanoid") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
 
             if _G.TeamCheck and player.Team == LocalPlayer.Team then
                 if ESPObjects[player] then
-                    ESPObjects[player].Name.Visible = false
-                    ESPObjects[player].Chams.Enabled = false
+                    ESPObjects[player].Visible = false
                 end
                 continue
             end
 
             if not ESPObjects[player] then
-                ESPObjects[player] = {
-                    Name = Drawing.new("Text"),
-                    Chams = Instance.new("Highlight")
-                }
-
-                local Name = ESPObjects[player].Name
-                Name.Size = _G.TextSize
-                Name.Color = _G.TextColor
-                Name.Center = true
-                Name.Outline = _G.Outline
-                Name.Font = _G.TextFont
-                Name.Transparency = _G.TextTransparency
-
-                local Chams = ESPObjects[player].Chams
-                Chams.FillColor = Color3.new(1, 1, 1)
-                Chams.FillTransparency = 0.5
-                Chams.OutlineColor = Color3.new(1, 1, 1)
-                Chams.OutlineTransparency = 0
-                Chams.Enabled = true
-                Chams.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                Chams.Adornee = player.Character
-                Chams.Parent = game:GetService("CoreGui")
+                ESPObjects[player] = CreateESPText()
             end
 
             local HRP = player.Character.HumanoidRootPart
-            local Head = player.Character.Head
             local Humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             local pos, onScreen = Camera:WorldToViewportPoint(HRP.Position)
 
-            local Name = ESPObjects[player].Name
-            local Chams = ESPObjects[player].Chams
+            local distance = (HRP.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            local textSize = math.clamp(_G.BaseTextSize * (1 - (distance / _G.MaxDistance)), _G.MinTextSize, _G.BaseTextSize)
 
             if onScreen and _G.ESPEnabled then
-                local distance = math.floor((HRP.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-                local health = math.floor(Humanoid.Health)
+                local infoText = string.format("(%dm) %s [%d]", math.floor(distance), player.Name, math.floor(Humanoid.Health))
+                local esp = ESPObjects[player]
 
-                Name.Position = Vector2.new(pos.X, pos.Y - 25)
-                Name.Text = "("..distance.."m) "..player.Name.." ["..health.."]"
-                Name.Visible = true
-                Chams.Enabled = true
+                esp.Text = infoText
+                esp.Size = textSize
+                esp.Position = Vector2.new(pos.X, pos.Y - 25)
+                esp.Visible = true
             else
-                Name.Visible = false
-                Chams.Enabled = false
+                ESPObjects[player].Visible = false
             end
         else
             if ESPObjects[player] then
-                ESPObjects[player].Name.Visible = false
-                ESPObjects[player].Chams.Enabled = false
-
-                -- Verifica se o player morreu ou perdeu a Character
+                ESPObjects[player].Visible = false
                 if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-                    for _, obj in pairs(ESPObjects[player]) do pcall(function() obj:Destroy() end) end
+                    ESPObjects[player]:Remove()
                     ESPObjects[player] = nil
                 end
             end
