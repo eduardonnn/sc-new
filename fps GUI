@@ -1,0 +1,176 @@
+--[[
+    FPS Booster com Interface - The Walking Dead Online
+    Desenvolvedor: Cafezinho
+--]]
+
+-- Serviços usados
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Controle
+local decorationConnection
+local options = {
+    graphics = true,
+    effects = true,
+    decals = true,
+    ui = true,
+    animations = true,
+    decorations = true,
+    memory = true
+}
+
+-- Utilitário
+local function isImportant(obj)
+    return CollectionService:HasTag(obj, "Importante")
+end
+
+-- Otimizadores
+local function setLowGraphicsQuality()
+    if not options.graphics then return end
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+end
+
+local function removeLightingEffects()
+    if not options.graphics then return end
+    for _, effect in ipairs(Lighting:GetChildren()) do
+        if effect:IsA("BloomEffect") or effect:IsA("SunRaysEffect") or effect:IsA("DepthOfFieldEffect") then
+            effect:Destroy()
+        end
+    end
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 100000
+end
+
+local function cleanEffects()
+    if not options.effects then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if isImportant(obj) then continue end
+        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") then
+            obj.Enabled = false
+        elseif obj:IsA("Sound") and obj.Name ~= "RadioSound" then
+            obj.Volume = 0
+        elseif obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
+            obj.Enabled = false
+        end
+    end
+end
+
+local function reduceDecals()
+    if not options.decals then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Decal") and not isImportant(obj) then
+            obj.Transparency = 1
+        end
+    end
+end
+
+local function cleanInvisibleUI()
+    if not options.ui then return end
+    for _, gui in ipairs(LocalPlayer.PlayerGui:GetDescendants()) do
+        if gui:IsA("GuiObject") and not gui.Visible then
+            gui:Destroy()
+        end
+    end
+end
+
+local function disableNonGameplayAnimations()
+    if not options.animations then return end
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Animator") and not isImportant(obj) then
+            obj:Destroy()
+        end
+    end
+end
+
+local function limitDistantDecorations(distanceLimit)
+    if not options.decorations then return end
+    if decorationConnection then
+        decorationConnection:Disconnect()
+    end
+
+    local hrp = (LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 10)
+    if not hrp then return end
+
+    decorationConnection = RunService.Heartbeat:Connect(function()
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if not part:IsA("BasePart") or isImportant(part) then continue end
+            if part.Name:lower():find("tree") or part.Name:lower():find("deco") then
+                local dist = (hrp.Position - part.Position).Magnitude
+                pcall(function()
+                    part.Transparency = dist > distanceLimit and 1 or 0.3
+                    part.CanCollide = dist <= distanceLimit
+                end)
+            end
+        end
+    end)
+end
+
+local function memoryCleaner()
+    if not options.memory then return end
+    while options.memory do
+        collectgarbage("collect")
+        task.wait(15)
+    end
+end
+
+-- Interface Gráfica
+local function createBoosterUI()
+    local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    gui.Name = "FPSBoosterUI"
+
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(0, 200, 0, 300)
+    frame.Position = UDim2.new(0, 10, 0.5, -150)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BackgroundTransparency = 0.2
+
+    local layout = Instance.new("UIListLayout", frame)
+    layout.Padding = UDim.new(0, 5)
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+
+    local function createToggle(name, key)
+        local button = Instance.new("TextButton", frame)
+        button.Size = UDim2.new(1, -10, 0, 30)
+        button.Text = name .. ": ON"
+        button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.MouseButton1Click:Connect(function()
+            options[key] = not options[key]
+            button.Text = name .. ": " .. (options[key] and "ON" or "OFF")
+        end)
+    end
+
+    createToggle("Gráficos", "graphics")
+    createToggle("Efeitos", "effects")
+    createToggle("Decalques", "decals")
+    createToggle("UI Oculta", "ui")
+    createToggle("Animações", "animations")
+    createToggle("Decorações", "decorations")
+    createToggle("Limpeza Memória", "memory")
+
+    local ativar = Instance.new("TextButton", frame)
+    ativar.Size = UDim2.new(1, -10, 0, 40)
+    ativar.Text = "Ativar FPS Booster"
+    ativar.BackgroundColor3 = Color3.fromRGB(60, 130, 60)
+    ativar.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ativar.MouseButton1Click:Connect(function()
+        setLowGraphicsQuality()
+        removeLightingEffects()
+        cleanEffects()
+        reduceDecals()
+        cleanInvisibleUI()
+        disableNonGameplayAnimations()
+        limitDistantDecorations(120)
+        task.spawn(memoryCleaner)
+    end)
+end
+
+-- Inicia UI
+createBoosterUI()
